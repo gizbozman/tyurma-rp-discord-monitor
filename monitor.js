@@ -37,14 +37,20 @@ async function queryServer() {
       socketTimeout: 5000,
       attemptTimeout: 10000,
     });
+    const list = Array.isArray(state.players)
+      ? state.players
+          .map((p) => (p && p.name ? String(p.name).trim() : ""))
+          .filter(Boolean)
+      : [];
     return {
       online: true,
       name: state.name || SERVER_NAME,
       map: state.map || "?",
-      players: state.numplayers ?? (state.players && state.players.length) ?? 0,
+      players: state.numplayers ?? list.length ?? 0,
       max: state.maxplayers ?? 32,
       ping: state.ping ?? null,
       connect: state.connect || CONNECT_HINT,
+      playerList: list,
     };
   } catch (err) {
     return {
@@ -72,6 +78,7 @@ function buildEmbed(info) {
 
   const barFilled = Math.min(10, Math.round((info.players / Math.max(1, info.max)) * 10));
   const bar = "█".repeat(barFilled) + "░".repeat(10 - barFilled);
+  const playerField = formatPlayerList(info.playerList || [], info.players);
 
   return {
     title: info.name || SERVER_NAME,
@@ -81,12 +88,39 @@ function buildEmbed(info) {
       { name: "Игроки", value: `**${info.players}** / **${info.max}**\n\`${bar}\``, inline: true },
       { name: "Карта", value: `\`${info.map}\``, inline: true },
       { name: "Пинг запроса", value: info.ping != null ? `${info.ping} мс` : "—", inline: true },
+      { name: "Список игроков", value: playerField, inline: false },
       { name: "Подключение", value: `\`${info.connect || CONNECT_HINT}\``, inline: false },
       { name: "Обновлено", value: `<t:${now}:R>`, inline: false },
     ],
     footer: { text: "ТюрьмаRP мониторинг · обновление ~каждые 5 мин" },
     timestamp: new Date().toISOString(),
   };
+}
+
+/** Discord field value max 1024 chars */
+function formatPlayerList(names, count) {
+  if (!count || count < 1) return "_никого нет_";
+  if (!names.length) {
+    return `_сервер не отдал ники (${count} в игре)_`;
+  }
+
+  const lines = [];
+  let used = 0;
+  const limit = 980;
+  for (let i = 0; i < names.length; i++) {
+    const line = `\`${i + 1}.\` ${names[i].slice(0, 64)}`;
+    if (used + line.length + 1 > limit) {
+      const left = names.length - i;
+      lines.push(`_…и ещё ${left}_`);
+      break;
+    }
+    lines.push(line);
+    used += line.length + 1;
+  }
+  if (count > names.length) {
+    lines.push(`_(+${count - names.length} без ника)_`);
+  }
+  return lines.join("\n") || "_никого нет_";
 }
 
 async function discordApi(method, path, body) {
@@ -114,7 +148,14 @@ async function discordApi(method, path, body) {
 async function main() {
   console.log(`Query ${HOST}:${PORT} ...`);
   const info = await queryServer();
-  console.log(info.online ? `Online ${info.players}/${info.max} map=${info.map}` : `Offline: ${info.error}`);
+  if (info.online) {
+    console.log(`Online ${info.players}/${info.max} map=${info.map}`);
+    if (info.playerList && info.playerList.length) {
+      console.log("Players:", info.playerList.join(", "));
+    }
+  } else {
+    console.log(`Offline: ${info.error}`);
+  }
 
   const embed = buildEmbed(info);
   const payload = { embeds: [embed] };
