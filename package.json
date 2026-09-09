@@ -1,0 +1,17 @@
+{
+  "name": "tyurma-rp-discord-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Мониторинг GMod-сервера ТюрьмаRP в Discord (GitHub Actions)",
+  "main": "monitor.js",
+  "scripts": {
+    "start": "node monitor.js",
+    "monitor": "node monitor.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "gamedig": "^5.1.0"
+  }
+}

@@ -1,0 +1,35 @@
+name: Server status → Discord
+
+on:
+  workflow_dispatch:
+  schedule:
+    # каждые 5 минут (лимит GitHub: не чаще ~раз в 5 мин реально)
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Query & update Discord
+        env:
+          GAME_HOST: ${{ secrets.GAME_HOST }}
+          GAME_PORT: ${{ secrets.GAME_PORT }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+          DISCORD_MESSAGE_ID: ${{ secrets.DISCORD_MESSAGE_ID }}
+          SERVER_NAME: ${{ vars.SERVER_NAME }}
+          CONNECT_HINT: ${{ vars.CONNECT_HINT }}
+        run: node monitor.js
